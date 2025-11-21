@@ -38,10 +38,7 @@ rust-persona/
 
 ## Installation
 
-1. Clone the repository (if not already done):
-   ```bash
-   cd /Users/jimzaccardo/Documents/GitHub/rust-persona
-   ```
+1. Clone the repository
 
 2. Build the project:
    ```bash
