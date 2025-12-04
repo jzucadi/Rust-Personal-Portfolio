@@ -35,7 +35,7 @@ const VERTEX_SHADER = `
         if (hover > 0.0) {
             float _wave = hover * amplitude * sin(speed * (position.x + position.y + time));
             float _dist = length(uv - intersect);
-            float _inCircle = 1. - (clamp(_dist, 0., hoverRadius) / hoverRadius);
+            float _inCircle = 1.  - (clamp(_dist, 0., hoverRadius) / hoverRadius);
             float _distort = _inCircle * _wave;
 
             _plane.z += _distort;
@@ -54,264 +54,547 @@ const FRAGMENT_SHADER = `
     void main(){
 
         vec2 uv = vec2(
-            vUv.x * ratio.x + (1.0 - ratio.x) * 0.5,
-            vUv.y * ratio.y + (1.0 - ratio.y) * 0.5
+            vUv. x * ratio.x + (1.0 - ratio.x) * 0.5,
+            vUv. y * ratio.y + (1.0 - ratio.y) * 0. 5
         );
 
         gl_FragColor = texture2D(uTexture, uv);
     }
 `;
 
-const FOV = 50;
-const CAMERA_DISTANCE = 50;
-const PLANE_WIDTH_SEGMENTS = 30;
+/**
+ * Default configuration for the wave effect
+ * @typedef {Object} WaveEffectOptions
+ */
+const DEFAULT_OPTIONS = {
+  fov: 50,
+  cameraDistance: 50,
+  planeWidthSegments: 30,
+  hoverRadius: 0.35,
+  waveSpeed: 0.7,
+  waveAmplitude: 10,
+  animationSpeed: 0.05,
+  hoverScale: 1.05,
+  backgroundColor: "#ffffff",
+  transitionDuration: 0.35,
+};
 
+/**
+ * Checks if WebGL is available in the browser
+ * @returns {boolean}
+ */
+function isWebGLAvailable() {
+  try {
+    const canvas = document.createElement("canvas");
+    return ! !(
+      window.WebGLRenderingContext &&
+      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Throttle function to limit how often a function can be called
+ * @param {Function} func - The function to throttle
+ * @param {number} limit - Time limit in milliseconds
+ * @returns {Function}
+ */
+function throttle(func, limit) {
+  let inThrottle;
+  return function (...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  };
+}
+
+/**
+ * ImageWaveEffect creates an interactive wave animation effect on images
+ * using Three.js and GSAP
+ */
 class ImageWaveEffect {
-  constructor(imgElement) {
+  /**
+   * @param {HTMLImageElement} imgElement - The image element to apply the effect to
+   * @param {Partial<typeof DEFAULT_OPTIONS>} options - Configuration options
+   */
+  constructor(imgElement, options = {}) {
+    if (!imgElement || !(imgElement instanceof HTMLImageElement)) {
+      console.error("ImageWaveEffect: Invalid image element provided");
+      return;
+    }
+
     this.imgElement = imgElement;
     this.container = imgElement.closest(".pic");
+    this.options = { ...DEFAULT_OPTIONS, ...options };
     this.mouse = new Vector2();
     this.time = 0;
     this.uv = new Vector2(0, 0);
     this.isHovering = false;
-    this.animationFrameId = null;
+    this. animationFrameId = null;
+    this.isDestroyed = false;
+
+    // Bound event handlers for proper cleanup
+    this. boundHandleMouseEnter = this.handleMouseEnter.bind(this);
+    this. boundHandleMouseMove = throttle(this.handleMouseMove.bind(this), 16);
+    this. boundHandleMouseLeave = this.handleMouseLeave.bind(this);
+    this.boundHandleResize = this.handleResize. bind(this);
+
+    // Store references for cleanup
+    this. texture = null;
+    this.geometry = null;
+    this.material = null;
+    this. resizeObserver = null;
+    this.wrapper = null;
 
     this.init();
   }
 
   async init() {
-    const imgSrc = this.imgElement.src;
+    if (!isWebGLAvailable()) {
+      console.warn("ImageWaveEffect: WebGL not available, skipping effect");
+      return;
+    }
 
-    // Wait for image to load
-    await new Promise((resolve) => {
-      if (this.imgElement.complete) {
+    if (! this.container) {
+      console.error("ImageWaveEffect: Container with class 'pic' not found");
+      return;
+    }
+
+    try {
+      const imgSrc = this.imgElement.src;
+
+      // Wait for image to load
+      await this.waitForImageLoad();
+
+      // Check if destroyed during async operation
+      if (this.isDestroyed) return;
+
+      // Get the exact rendered dimensions BEFORE hiding the image
+      const imgRect = this.imgElement.getBoundingClientRect();
+      this.targetWidth = imgRect. width;
+      this.targetHeight = imgRect.height;
+
+      if (this.targetWidth === 0 || this.targetHeight === 0) {
+        console.warn("ImageWaveEffect: Image has zero dimensions, skipping");
+        return;
+      }
+
+      // Create wrapper and canvas
+      this.createWrapper();
+      this. createCanvas();
+      this.setupThreeJS();
+
+      // Create the plane with wave shader
+      await this.createPlane(imgSrc);
+
+      // Check if destroyed during async operation
+      if (this.isDestroyed) return;
+
+      // Finalize setup
+      this.finalizeSetup();
+
+      // Start animation loop
+      this.animate();
+
+      // Set up event listeners
+      this. setupEventListeners();
+    } catch (error) {
+      console.error("ImageWaveEffect: Initialization failed", error);
+      this.destroy();
+    }
+  }
+
+  /**
+   * Wait for the image to fully load
+   * @returns {Promise<void>}
+   */
+  waitForImageLoad() {
+    return new Promise((resolve, reject) => {
+      if (this.imgElement.complete && this.imgElement.naturalWidth > 0) {
         resolve();
       } else {
-        this.imgElement.addEventListener("load", resolve);
+        const onLoad = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error("Image failed to load"));
+        };
+        const cleanup = () => {
+          this.imgElement.removeEventListener("load", onLoad);
+          this.imgElement. removeEventListener("error", onError);
+        };
+
+        this.imgElement.addEventListener("load", onLoad);
+        this.imgElement. addEventListener("error", onError);
       }
     });
+  }
 
-    // IMPORTANT: Get the exact rendered dimensions BEFORE hiding the image
-    const imgRect = this.imgElement.getBoundingClientRect();
-    const targetWidth = imgRect.width;
-    const targetHeight = imgRect.height;
+  createWrapper() {
+    this.wrapper = document.createElement("div");
+    this.wrapper.className = "wave-image-wrapper";
+    Object.assign(this. wrapper.style, {
+      width: `${this.targetWidth}px`,
+      height: `${this.targetHeight}px`,
+      boxShadow: "var(--shad)",
+      borderRadius: "5px",
+      overflow: "hidden",
+      justifySelf: "right",
+      display: "block",
+    });
+  }
 
-    console.log("Original image dimensions:", targetWidth, "x", targetHeight);
+  createCanvas() {
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = this. targetWidth * window.devicePixelRatio;
+    this.canvas.height = this.targetHeight * window.devicePixelRatio;
+    Object.assign(this. canvas.style, {
+      width: `${this.targetWidth}px`,
+      height: `${this.targetHeight}px`,
+      display: "block",
+    });
+  }
 
-    // Create a wrapper div with explicit dimensions
-    const wrapper = document.createElement("div");
-    wrapper.className = "wave-image-wrapper";
-    wrapper.style.width = targetWidth + "px";
-    wrapper.style.height = targetHeight + "px";
-    wrapper.style.boxShadow = "var(--shad)";
-    wrapper.style.borderRadius = "5px";
-    wrapper.style.overflow = "hidden";
-    wrapper.style.justifySelf = "right";
-    wrapper.style.display = "block";
-
-    // Create canvas - set both element dimensions AND CSS
-    const canvas = document.createElement("canvas");
-    canvas.width = targetWidth * window.devicePixelRatio;
-    canvas.height = targetHeight * window.devicePixelRatio;
-    canvas.style.width = targetWidth + "px";
-    canvas.style.height = targetHeight + "px";
-    canvas.style.display = "block";
-
-    // Set up Three.js scene
+  setupThreeJS() {
     this.scene = new Scene();
-    this.scene.background = new Color("#ffffff");
+    this. scene.background = new Color(this.options.backgroundColor);
 
     this.camera = new PerspectiveCamera(
-      FOV,
-      targetWidth / targetHeight,
+      this.options.fov,
+      this.targetWidth / this.targetHeight,
       1,
-      1000,
+      1000
     );
-    this.camera.position.z = CAMERA_DISTANCE;
+    this.camera.position.z = this.options. cameraDistance;
 
     this.raycaster = new Raycaster();
 
     this.renderer = new WebGLRenderer({
-      canvas: canvas,
+      canvas: this.canvas,
       antialias: true,
       alpha: true,
+      powerPreference: "high-performance",
     });
-
-    // Create the plane with wave shader
-    await this.createPlane(imgSrc, targetWidth, targetHeight);
-
-    // Add canvas to wrapper, then replace image with wrapper
-    wrapper.appendChild(canvas);
-    this.imgElement.style.display = "none";
-    this.container.appendChild(wrapper);
-
-    // Set renderer size
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(targetWidth, targetHeight);
-    this.renderer.render(this.scene, this.camera);
-
-    // Start animation loop
-    this.animate();
-
-    // Set up event listeners
-    this.setupEventListeners();
   }
 
-  async createPlane(imageSrc, width, height) {
-    // Load texture
-    const texture = await new Promise((resolve, reject) => {
-      new TextureLoader().load(
-        imageSrc,
-        (t) => {
-          t.wrapT = t.wrapS = RepeatWrapping;
-          t.anisotropy = 0;
-          t.magFilter = LinearFilter;
-          t.minFilter = LinearFilter;
-          resolve(t);
+  finalizeSetup() {
+    this.wrapper.appendChild(this. canvas);
+    this.imgElement.style.display = "none";
+    this. container.appendChild(this. wrapper);
+
+    this.renderer.setPixelRatio(Math.min(window. devicePixelRatio, 2));
+    this.renderer. setSize(this. targetWidth, this. targetHeight);
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Load texture and create the plane mesh
+   * @param {string} imageSrc - Source URL of the image
+   * @returns {Promise<void>}
+   */
+  async createPlane(imageSrc) {
+    this.texture = await this.loadTexture(imageSrc);
+
+    if (this.isDestroyed) return;
+
+    const { planeWidth, planeHeight } = this.calculatePlaneDimensions();
+    const ratio = this.calculateTextureRatio(planeWidth, planeHeight);
+
+    this.material = this.createShaderMaterial(ratio);
+    this.geometry = this.createPlaneGeometry(planeWidth, planeHeight);
+
+    this.plane = new Mesh(this.geometry, this.material);
+    this.scene.add(this. plane);
+  }
+
+  /**
+   * Load a texture with proper settings
+   * @param {string} src - Image source URL
+   * @returns {Promise<THREE. Texture>}
+   */
+  loadTexture(src) {
+    return new Promise((resolve, reject) => {
+      const loader = new TextureLoader();
+      loader.load(
+        src,
+        (texture) => {
+          texture.wrapT = texture.wrapS = RepeatWrapping;
+          texture.anisotropy = 0;
+          texture.magFilter = LinearFilter;
+          texture.minFilter = LinearFilter;
+          resolve(texture);
         },
         undefined,
-        reject,
+        (error) => reject(new Error(`Failed to load texture: ${error.message}`))
       );
     });
+  }
 
-    // Calculate visible dimensions
+  calculatePlaneDimensions() {
     const visibleHeight =
       2 *
       Math.tan((this.camera.fov * Math.PI) / 180 / 2) *
-      Math.abs(CAMERA_DISTANCE);
-    const visibleWidth = visibleHeight * this.camera.aspect;
+      Math.abs(this.options.cameraDistance);
+    const visibleWidth = visibleHeight * this. camera.aspect;
 
     const planeWidth = visibleWidth / 2;
-    const planeAspectRatio = height / width;
+    const planeAspectRatio = this. targetHeight / this.targetWidth;
     const planeHeight = planeWidth * planeAspectRatio;
 
-    // Calculate texture ratio for proper aspect ratio
-    const textureAspectRatio = texture.image.width / texture.image.height;
-    const planeAspect = planeWidth / planeHeight;
-    const ratio = new Vector2(
-      Math.min(planeAspect / textureAspectRatio, 1.0),
-      Math.min(textureAspectRatio / planeAspect, 1.0),
-    );
+    return { planeWidth, planeHeight, planeAspectRatio };
+  }
 
-    // Create shader material
-    const planeMaterial = new ShaderMaterial({
+  calculateTextureRatio(planeWidth, planeHeight) {
+    const textureAspectRatio =
+      this.texture.image.width / this.texture.image.height;
+    const planeAspect = planeWidth / planeHeight;
+
+    return new Vector2(
+      Math.min(planeAspect / textureAspectRatio, 1. 0),
+      Math.min(textureAspectRatio / planeAspect, 1.0)
+    );
+  }
+
+  createShaderMaterial(ratio) {
+    return new ShaderMaterial({
       uniforms: {
-        hover: { type: "f", value: 0.0 },
-        uTexture: { type: "t", value: texture },
-        time: { type: "f", value: 0 },
-        intersect: { type: "v2", value: this.uv },
-        ratio: { type: "v2", value: ratio },
-        hoverRadius: { type: "f", value: 0.35 },
-        speed: { type: "f", value: 0.7 },
-        amplitude: { type: "f", value: 10 },
+        hover: { value: 0.0 },
+        uTexture: { value: this.texture },
+        time: { value: 0 },
+        intersect: { value: this.uv },
+        ratio: { value: ratio },
+        hoverRadius: { value: this.options.hoverRadius },
+        speed: { value: this.options.waveSpeed },
+        amplitude: { value: this.options.waveAmplitude },
       },
       side: DoubleSide,
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
     });
+  }
 
-    const planeGeometry = new PlaneGeometry(
+  createPlaneGeometry(planeWidth, planeHeight) {
+    const planeAspectRatio = planeHeight / planeWidth;
+    return new PlaneGeometry(
       planeWidth,
       planeHeight,
-      PLANE_WIDTH_SEGMENTS,
-      Math.round(PLANE_WIDTH_SEGMENTS * planeAspectRatio),
+      this. options.planeWidthSegments,
+      Math.round(this.options.planeWidthSegments * planeAspectRatio)
     );
-
-    this.plane = new Mesh(planeGeometry, planeMaterial);
-    this.scene.add(this.plane);
   }
 
   setupEventListeners() {
-    // Attach listeners to the wrapper instead of container
-    const wrapper = this.container.querySelector(".wave-image-wrapper");
-    wrapper.addEventListener("mouseenter", (e) => this.handleMouseEnter(e));
-    wrapper.addEventListener("mousemove", (e) => this.handleMouseMove(e));
-    wrapper.addEventListener("mouseleave", (e) => this.handleMouseLeave(e));
+    if (! this.wrapper) return;
+
+    this.wrapper.addEventListener("mouseenter", this.boundHandleMouseEnter);
+    this. wrapper.addEventListener("mousemove", this. boundHandleMouseMove);
+    this. wrapper.addEventListener("mouseleave", this. boundHandleMouseLeave);
+
+    // Optional: Handle resize
+    if (typeof ResizeObserver !== "undefined") {
+      this.resizeObserver = new ResizeObserver(this.boundHandleResize);
+      this.resizeObserver.observe(this.wrapper);
+    }
   }
 
-  handleMouseEnter(e) {
-    this.isHovering = true;
-    const wrapper = this.container.querySelector(".wave-image-wrapper");
-    wrapper.style.cursor = "pointer";
+  removeEventListeners() {
+    if (! this.wrapper) return;
 
-    // Animate hover value and scale with GSAP
-    gsap.to(this.plane.material.uniforms.hover, 0.35, { value: 1.0 });
-    gsap.to(this.plane.scale, 0.25, { x: 1.05, y: 1.05 });
+    this. wrapper.removeEventListener("mouseenter", this.boundHandleMouseEnter);
+    this.wrapper.removeEventListener("mousemove", this.boundHandleMouseMove);
+    this.wrapper.removeEventListener("mouseleave", this.boundHandleMouseLeave);
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+  }
+
+  handleResize(entries) {
+    const entry = entries[0];
+    if (! entry) return;
+
+    const { width, height } = entry.contentRect;
+    if (width === 0 || height === 0) return;
+
+    this.targetWidth = width;
+    this.targetHeight = height;
+
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+
+    this.renderer.setSize(width, height);
+  }
+
+  handleMouseEnter() {
+    this. isHovering = true;
+
+    if (this. wrapper) {
+      this.wrapper.style. cursor = "pointer";
+    }
+
+    const duration = this.options. transitionDuration;
+
+    gsap.to(this.plane.material. uniforms.hover, {
+      value: 1.0,
+      duration,
+    });
+    gsap.to(this. plane.scale, {
+      x: this.options. hoverScale,
+      y: this.options. hoverScale,
+      duration: duration * 0. 7,
+    });
   }
 
   handleMouseMove(e) {
-    if (!this.isHovering) return;
+    if (! this.isHovering || !this.wrapper) return;
 
-    const wrapper = this.container.querySelector(".wave-image-wrapper");
-    const rect = wrapper.getBoundingClientRect();
+    const rect = this. wrapper.getBoundingClientRect();
 
     // Normalized device coordinates for raycaster
     this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    this.mouse.y = -((e. clientY - rect. top) / rect. height) * 2 + 1;
 
     // Update raycaster
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObject(this.plane, false);
+    this.raycaster. setFromCamera(this.mouse, this. camera);
+    const intersects = this. raycaster.intersectObject(this. plane, false);
 
     if (intersects.length > 0) {
-      // Update UV coordinates for wave center
-      this.uv.x = intersects[0].uv.x;
-      this.uv.y = intersects[0].uv.y;
+      const { uv } = intersects[0];
+      this.uv.x = uv.x;
+      this.uv. y = uv. y;
 
-      // Move plane slightly toward mouse
-      gsap.to(this.plane.position, 0.35, {
-        x: this.mouse.x * 2,
+      gsap.to(this.plane.position, {
+        x: this.mouse. x * 2,
         y: this.mouse.y * 2,
+        duration: this.options.transitionDuration,
       });
     }
   }
 
-  handleMouseLeave(e) {
-    this.isHovering = false;
-    const wrapper = this.container.querySelector(".wave-image-wrapper");
-    wrapper.style.cursor = "default";
+  handleMouseLeave() {
+    this. isHovering = false;
 
-    // Animate back to original state
-    gsap.to(this.plane.position, 0.35, { x: 0, y: 0 });
-    gsap.to(this.plane.scale, 0.35, { x: 1, y: 1 });
-    gsap.to(this.plane.material.uniforms.hover, 0.35, { value: 0.0 });
+    if (this.wrapper) {
+      this. wrapper.style.cursor = "default";
+    }
+
+    const duration = this.options.transitionDuration;
+
+    gsap.to(this. plane.position, { x: 0, y: 0, duration });
+    gsap.to(this.plane.scale, { x: 1, y: 1, duration });
+    gsap.to(this.plane.material.uniforms.hover, { value: 0.0, duration });
   }
 
   animate() {
-    this.animationFrameId = requestAnimationFrame(() => this.animate());
+    if (this.isDestroyed) return;
 
-    // Update time for wave animation
-    this.time += 0.05;
-    if (this.plane && this.plane.material.uniforms.time) {
-      this.plane.material.uniforms.time.value = this.time;
+    this. animationFrameId = requestAnimationFrame(() => this.animate());
+
+    this.time += this.options.animationSpeed;
+
+    if (this. plane?. material?. uniforms?.time) {
+      this. plane.material.uniforms.time.value = this.time;
     }
 
     this.renderer.render(this.scene, this.camera);
   }
 
+  /**
+   * Clean up all resources and event listeners
+   */
   destroy() {
+    this.isDestroyed = true;
+
+    // Stop animation loop
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
     }
+
+    // Remove event listeners
+    this.removeEventListeners();
+
+    // Dispose Three.js resources
+    if (this.geometry) {
+      this.geometry.dispose();
+      this.geometry = null;
+    }
+
+    if (this. material) {
+      this.material.dispose();
+      this. material = null;
+    }
+
+    if (this.texture) {
+      this.texture.dispose();
+      this.texture = null;
+    }
+
     if (this.renderer) {
       this.renderer.dispose();
+      this.renderer. forceContextLoss();
+      this. renderer = null;
     }
+
+    // Remove DOM elements
+    if (this.wrapper?. parentNode) {
+      this.wrapper.parentNode.removeChild(this.wrapper);
+    }
+
+    // Restore original image
+    if (this.imgElement) {
+      this.imgElement. style.display = "";
+    }
+
+    // Clear references
+    this. plane = null;
+    this.scene = null;
+    this. camera = null;
+    this.canvas = null;
+    this.wrapper = null;
   }
 }
 
 // Initialize wave effects for all job images
-document.addEventListener("DOMContentLoaded", function () {
+document. addEventListener("DOMContentLoaded", () => {
+  if (! isWebGLAvailable()) {
+    console.warn("WebGL not available, wave effects disabled");
+    return;
+  }
+
   const jobImages = document.querySelectorAll(".pic img");
   const waveEffects = [];
 
-  jobImages.forEach((img) => {
-    // Wait for image to load before creating effect
-    if (img.complete) {
+  const initEffect = (img) => {
+    try {
       waveEffects.push(new ImageWaveEffect(img));
-    } else {
-      img.addEventListener("load", () => {
-        waveEffects.push(new ImageWaveEffect(img));
-      });
+    } catch (error) {
+      console.error("Failed to initialize wave effect:", error);
     }
+  };
+
+  jobImages.forEach((img) => {
+    if (img.complete && img.naturalWidth > 0) {
+      initEffect(img);
+    } else {
+      img.addEventListener("load", () => initEffect(img), { once: true });
+      img.addEventListener(
+        "error",
+        () => console.warn("Image failed to load:", img.src),
+        { once: true }
+      );
+    }
+  });
+
+  // Cleanup on page unload
+  window.addEventListener("beforeunload", () => {
+    waveEffects.forEach((effect) => effect. destroy());
   });
 });
