@@ -55,7 +55,7 @@ const FRAGMENT_SHADER = `
 
         vec2 uv = vec2(
             vUv. x * ratio.x + (1.0 - ratio.x) * 0.5,
-            vUv. y * ratio.y + (1.0 - ratio.y) * 0. 5
+            vUv. y * ratio.y + (1.0 - ratio.y) * 0.5
         );
 
         gl_FragColor = texture2D(uTexture, uv);
@@ -86,7 +86,7 @@ const DEFAULT_OPTIONS = {
 function isWebGLAvailable() {
   try {
     const canvas = document.createElement("canvas");
-    return ! !(
+    return !!(
       window.WebGLRenderingContext &&
       (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
     );
@@ -134,20 +134,20 @@ class ImageWaveEffect {
     this.time = 0;
     this.uv = new Vector2(0, 0);
     this.isHovering = false;
-    this. animationFrameId = null;
+    this.animationFrameId = null;
     this.isDestroyed = false;
 
     // Bound event handlers for proper cleanup
-    this. boundHandleMouseEnter = this.handleMouseEnter.bind(this);
-    this. boundHandleMouseMove = throttle(this.handleMouseMove.bind(this), 16);
-    this. boundHandleMouseLeave = this.handleMouseLeave.bind(this);
-    this.boundHandleResize = this.handleResize. bind(this);
+    this.boundHandleMouseEnter = this.handleMouseEnter.bind(this);
+    this.boundHandleMouseMove = throttle(this.handleMouseMove.bind(this), 16);
+    this.boundHandleMouseLeave = this.handleMouseLeave.bind(this);
+    this.boundHandleResize = this.handleResize.bind(this);
 
     // Store references for cleanup
-    this. texture = null;
+    this.texture = null;
     this.geometry = null;
     this.material = null;
-    this. resizeObserver = null;
+    this.resizeObserver = null;
     this.wrapper = null;
 
     this.init();
@@ -159,7 +159,7 @@ class ImageWaveEffect {
       return;
     }
 
-    if (! this.container) {
+    if (!this.container) {
       console.error("ImageWaveEffect: Container with class 'pic' not found");
       return;
     }
@@ -175,7 +175,7 @@ class ImageWaveEffect {
 
       // Get the exact rendered dimensions BEFORE hiding the image
       const imgRect = this.imgElement.getBoundingClientRect();
-      this.targetWidth = imgRect. width;
+      this.targetWidth = imgRect.width;
       this.targetHeight = imgRect.height;
 
       if (this.targetWidth === 0 || this.targetHeight === 0) {
@@ -185,7 +185,7 @@ class ImageWaveEffect {
 
       // Create wrapper and canvas
       this.createWrapper();
-      this. createCanvas();
+      this.createCanvas();
       this.setupThreeJS();
 
       // Create the plane with wave shader
@@ -201,7 +201,7 @@ class ImageWaveEffect {
       this.animate();
 
       // Set up event listeners
-      this. setupEventListeners();
+      this.setupEventListeners();
     } catch (error) {
       console.error("ImageWaveEffect: Initialization failed", error);
       this.destroy();
@@ -227,11 +227,11 @@ class ImageWaveEffect {
         };
         const cleanup = () => {
           this.imgElement.removeEventListener("load", onLoad);
-          this.imgElement. removeEventListener("error", onError);
+          this.imgElement.removeEventListener("error", onError);
         };
 
         this.imgElement.addEventListener("load", onLoad);
-        this.imgElement. addEventListener("error", onError);
+        this.imgElement.addEventListener("error", onError);
       }
     });
   }
@@ -239,7 +239,7 @@ class ImageWaveEffect {
   createWrapper() {
     this.wrapper = document.createElement("div");
     this.wrapper.className = "wave-image-wrapper";
-    Object.assign(this. wrapper.style, {
+    Object.assign(this.wrapper.style, {
       width: `${this.targetWidth}px`,
       height: `${this.targetHeight}px`,
       boxShadow: "var(--shad)",
@@ -252,9 +252,9 @@ class ImageWaveEffect {
 
   createCanvas() {
     this.canvas = document.createElement("canvas");
-    this.canvas.width = this. targetWidth * window.devicePixelRatio;
+    this.canvas.width = this.targetWidth * window.devicePixelRatio;
     this.canvas.height = this.targetHeight * window.devicePixelRatio;
-    Object.assign(this. canvas.style, {
+    Object.assign(this.canvas.style, {
       width: `${this.targetWidth}px`,
       height: `${this.targetHeight}px`,
       display: "block",
@@ -263,15 +263,15 @@ class ImageWaveEffect {
 
   setupThreeJS() {
     this.scene = new Scene();
-    this. scene.background = new Color(this.options.backgroundColor);
+    this.scene.background = new Color(this.options.backgroundColor);
 
     this.camera = new PerspectiveCamera(
       this.options.fov,
       this.targetWidth / this.targetHeight,
       1,
-      1000
+      1000,
     );
-    this.camera.position.z = this.options. cameraDistance;
+    this.camera.position.z = this.options.cameraDistance;
 
     this.raycaster = new Raycaster();
 
@@ -284,12 +284,12 @@ class ImageWaveEffect {
   }
 
   finalizeSetup() {
-    this.wrapper.appendChild(this. canvas);
+    this.wrapper.appendChild(this.canvas);
     this.imgElement.style.display = "none";
-    this. container.appendChild(this. wrapper);
+    this.container.appendChild(this.wrapper);
 
-    this.renderer.setPixelRatio(Math.min(window. devicePixelRatio, 2));
-    this.renderer. setSize(this. targetWidth, this. targetHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(this.targetWidth, this.targetHeight);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -310,7 +310,7 @@ class ImageWaveEffect {
     this.geometry = this.createPlaneGeometry(planeWidth, planeHeight);
 
     this.plane = new Mesh(this.geometry, this.material);
-    this.scene.add(this. plane);
+    this.scene.add(this.plane);
   }
 
   /**
@@ -331,7 +331,8 @@ class ImageWaveEffect {
           resolve(texture);
         },
         undefined,
-        (error) => reject(new Error(`Failed to load texture: ${error.message}`))
+        (error) =>
+          reject(new Error(`Failed to load texture: ${error.message}`)),
       );
     });
   }
@@ -341,10 +342,11 @@ class ImageWaveEffect {
       2 *
       Math.tan((this.camera.fov * Math.PI) / 180 / 2) *
       Math.abs(this.options.cameraDistance);
-    const visibleWidth = visibleHeight * this. camera.aspect;
+    const visibleWidth = visibleHeight * this.camera.aspect;
 
-    const planeWidth = visibleWidth / 2;
-    const planeAspectRatio = this. targetHeight / this.targetWidth;
+    // Use the full visible width so the plane fills the canvas
+    const planeWidth = visibleWidth;
+    const planeAspectRatio = this.targetHeight / this.targetWidth;
     const planeHeight = planeWidth * planeAspectRatio;
 
     return { planeWidth, planeHeight, planeAspectRatio };
@@ -356,8 +358,8 @@ class ImageWaveEffect {
     const planeAspect = planeWidth / planeHeight;
 
     return new Vector2(
-      Math.min(planeAspect / textureAspectRatio, 1. 0),
-      Math.min(textureAspectRatio / planeAspect, 1.0)
+      Math.min(planeAspect / textureAspectRatio, 1.0),
+      Math.min(textureAspectRatio / planeAspect, 1.0),
     );
   }
 
@@ -384,17 +386,17 @@ class ImageWaveEffect {
     return new PlaneGeometry(
       planeWidth,
       planeHeight,
-      this. options.planeWidthSegments,
-      Math.round(this.options.planeWidthSegments * planeAspectRatio)
+      this.options.planeWidthSegments,
+      Math.round(this.options.planeWidthSegments * planeAspectRatio),
     );
   }
 
   setupEventListeners() {
-    if (! this.wrapper) return;
+    if (!this.wrapper) return;
 
     this.wrapper.addEventListener("mouseenter", this.boundHandleMouseEnter);
-    this. wrapper.addEventListener("mousemove", this. boundHandleMouseMove);
-    this. wrapper.addEventListener("mouseleave", this. boundHandleMouseLeave);
+    this.wrapper.addEventListener("mousemove", this.boundHandleMouseMove);
+    this.wrapper.addEventListener("mouseleave", this.boundHandleMouseLeave);
 
     // Optional: Handle resize
     if (typeof ResizeObserver !== "undefined") {
@@ -404,9 +406,9 @@ class ImageWaveEffect {
   }
 
   removeEventListeners() {
-    if (! this.wrapper) return;
+    if (!this.wrapper) return;
 
-    this. wrapper.removeEventListener("mouseenter", this.boundHandleMouseEnter);
+    this.wrapper.removeEventListener("mouseenter", this.boundHandleMouseEnter);
     this.wrapper.removeEventListener("mousemove", this.boundHandleMouseMove);
     this.wrapper.removeEventListener("mouseleave", this.boundHandleMouseLeave);
 
@@ -418,7 +420,7 @@ class ImageWaveEffect {
 
   handleResize(entries) {
     const entry = entries[0];
-    if (! entry) return;
+    if (!entry) return;
 
     const { width, height } = entry.contentRect;
     if (width === 0 || height === 0) return;
@@ -433,45 +435,45 @@ class ImageWaveEffect {
   }
 
   handleMouseEnter() {
-    this. isHovering = true;
+    this.isHovering = true;
 
-    if (this. wrapper) {
-      this.wrapper.style. cursor = "pointer";
+    if (this.wrapper) {
+      this.wrapper.style.cursor = "pointer";
     }
 
-    const duration = this.options. transitionDuration;
+    const duration = this.options.transitionDuration;
 
-    gsap.to(this.plane.material. uniforms.hover, {
+    gsap.to(this.plane.material.uniforms.hover, {
       value: 1.0,
       duration,
     });
-    gsap.to(this. plane.scale, {
-      x: this.options. hoverScale,
-      y: this.options. hoverScale,
-      duration: duration * 0. 7,
+    gsap.to(this.plane.scale, {
+      x: this.options.hoverScale,
+      y: this.options.hoverScale,
+      duration: duration * 0.7,
     });
   }
 
   handleMouseMove(e) {
-    if (! this.isHovering || !this.wrapper) return;
+    if (!this.isHovering || !this.wrapper) return;
 
-    const rect = this. wrapper.getBoundingClientRect();
+    const rect = this.wrapper.getBoundingClientRect();
 
     // Normalized device coordinates for raycaster
     this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((e. clientY - rect. top) / rect. height) * 2 + 1;
+    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
     // Update raycaster
-    this.raycaster. setFromCamera(this.mouse, this. camera);
-    const intersects = this. raycaster.intersectObject(this. plane, false);
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObject(this.plane, false);
 
     if (intersects.length > 0) {
       const { uv } = intersects[0];
       this.uv.x = uv.x;
-      this.uv. y = uv. y;
+      this.uv.y = uv.y;
 
       gsap.to(this.plane.position, {
-        x: this.mouse. x * 2,
+        x: this.mouse.x * 2,
         y: this.mouse.y * 2,
         duration: this.options.transitionDuration,
       });
@@ -479,15 +481,15 @@ class ImageWaveEffect {
   }
 
   handleMouseLeave() {
-    this. isHovering = false;
+    this.isHovering = false;
 
     if (this.wrapper) {
-      this. wrapper.style.cursor = "default";
+      this.wrapper.style.cursor = "default";
     }
 
     const duration = this.options.transitionDuration;
 
-    gsap.to(this. plane.position, { x: 0, y: 0, duration });
+    gsap.to(this.plane.position, { x: 0, y: 0, duration });
     gsap.to(this.plane.scale, { x: 1, y: 1, duration });
     gsap.to(this.plane.material.uniforms.hover, { value: 0.0, duration });
   }
@@ -495,12 +497,12 @@ class ImageWaveEffect {
   animate() {
     if (this.isDestroyed) return;
 
-    this. animationFrameId = requestAnimationFrame(() => this.animate());
+    this.animationFrameId = requestAnimationFrame(() => this.animate());
 
     this.time += this.options.animationSpeed;
 
-    if (this. plane?. material?. uniforms?.time) {
-      this. plane.material.uniforms.time.value = this.time;
+    if (this.plane?.material?.uniforms?.time) {
+      this.plane.material.uniforms.time.value = this.time;
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -527,9 +529,9 @@ class ImageWaveEffect {
       this.geometry = null;
     }
 
-    if (this. material) {
+    if (this.material) {
       this.material.dispose();
-      this. material = null;
+      this.material = null;
     }
 
     if (this.texture) {
@@ -539,32 +541,32 @@ class ImageWaveEffect {
 
     if (this.renderer) {
       this.renderer.dispose();
-      this.renderer. forceContextLoss();
-      this. renderer = null;
+      this.renderer.forceContextLoss();
+      this.renderer = null;
     }
 
     // Remove DOM elements
-    if (this.wrapper?. parentNode) {
+    if (this.wrapper?.parentNode) {
       this.wrapper.parentNode.removeChild(this.wrapper);
     }
 
     // Restore original image
     if (this.imgElement) {
-      this.imgElement. style.display = "";
+      this.imgElement.style.display = "";
     }
 
     // Clear references
-    this. plane = null;
+    this.plane = null;
     this.scene = null;
-    this. camera = null;
+    this.camera = null;
     this.canvas = null;
     this.wrapper = null;
   }
 }
 
 // Initialize wave effects for all job images
-document. addEventListener("DOMContentLoaded", () => {
-  if (! isWebGLAvailable()) {
+document.addEventListener("DOMContentLoaded", () => {
+  if (!isWebGLAvailable()) {
     console.warn("WebGL not available, wave effects disabled");
     return;
   }
@@ -588,13 +590,13 @@ document. addEventListener("DOMContentLoaded", () => {
       img.addEventListener(
         "error",
         () => console.warn("Image failed to load:", img.src),
-        { once: true }
+        { once: true },
       );
     }
   });
 
   // Cleanup on page unload
   window.addEventListener("beforeunload", () => {
-    waveEffects.forEach((effect) => effect. destroy());
+    waveEffects.forEach((effect) => effect.destroy());
   });
 });
