@@ -32,5 +32,13 @@
     {% for job in jobs %}
         {% include "partials/job.html" %}
     {% endfor %}
+
+    <div class="image-gallery">
+        {% for job in jobs %}
+        <div class="gallery-item pic" data-link="{{ job.link }}">
+            <img src="/static/images{{ job.screen }}" alt="{{ job.name }}" />
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

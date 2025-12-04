@@ -141,6 +141,7 @@ class ImageWaveEffect {
     this.boundHandleMouseEnter = this.handleMouseEnter.bind(this);
     this.boundHandleMouseMove = throttle(this.handleMouseMove.bind(this), 16);
     this.boundHandleMouseLeave = this.handleMouseLeave.bind(this);
+    this.boundHandleClick = this.handleClick.bind(this);
     this.boundHandleResize = this.handleResize.bind(this);
 
     // Store references for cleanup
@@ -237,26 +238,36 @@ class ImageWaveEffect {
   }
 
   createWrapper() {
+    // Calculate extra padding needed for hover scale overflow
+    const scalePadding = (this.options.hoverScale - 1) / 2;
+    const extraWidth = this.targetWidth * scalePadding;
+    const extraHeight = this.targetHeight * scalePadding;
+
+    // Store canvas dimensions (larger to accommodate hover)
+    this.canvasWidth = this.targetWidth + extraWidth * 2;
+    this.canvasHeight = this.targetHeight + extraHeight * 2;
+
     this.wrapper = document.createElement("div");
     this.wrapper.className = "wave-image-wrapper";
     Object.assign(this.wrapper.style, {
-      width: `${this.targetWidth}px`,
-      height: `${this.targetHeight}px`,
-      boxShadow: "var(--shad)",
-      borderRadius: "5px",
-      overflow: "hidden",
+      width: `${this.canvasWidth}px`,
+      height: `${this.canvasHeight}px`,
+      // Negative margin to offset the extra padding so it aligns like the original
+      margin: `-${extraHeight}px -${extraWidth}px`,
+      overflow: "visible",
       justifySelf: "right",
       display: "block",
+      boxShadow: "var(--shad)",
     });
   }
 
   createCanvas() {
     this.canvas = document.createElement("canvas");
-    this.canvas.width = this.targetWidth * window.devicePixelRatio;
-    this.canvas.height = this.targetHeight * window.devicePixelRatio;
+    this.canvas.width = this.canvasWidth * window.devicePixelRatio;
+    this.canvas.height = this.canvasHeight * window.devicePixelRatio;
     Object.assign(this.canvas.style, {
-      width: `${this.targetWidth}px`,
-      height: `${this.targetHeight}px`,
+      width: `${this.canvasWidth}px`,
+      height: `${this.canvasHeight}px`,
       display: "block",
     });
   }
@@ -267,7 +278,7 @@ class ImageWaveEffect {
 
     this.camera = new PerspectiveCamera(
       this.options.fov,
-      this.targetWidth / this.targetHeight,
+      this.canvasWidth / this.canvasHeight,
       1,
       1000,
     );
@@ -289,7 +300,7 @@ class ImageWaveEffect {
     this.container.appendChild(this.wrapper);
 
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(this.targetWidth, this.targetHeight);
+    this.renderer.setSize(this.canvasWidth, this.canvasHeight);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -397,6 +408,7 @@ class ImageWaveEffect {
     this.wrapper.addEventListener("mouseenter", this.boundHandleMouseEnter);
     this.wrapper.addEventListener("mousemove", this.boundHandleMouseMove);
     this.wrapper.addEventListener("mouseleave", this.boundHandleMouseLeave);
+    this.wrapper.addEventListener("click", this.boundHandleClick);
 
     // Optional: Handle resize
     if (typeof ResizeObserver !== "undefined") {
@@ -411,6 +423,7 @@ class ImageWaveEffect {
     this.wrapper.removeEventListener("mouseenter", this.boundHandleMouseEnter);
     this.wrapper.removeEventListener("mousemove", this.boundHandleMouseMove);
     this.wrapper.removeEventListener("mouseleave", this.boundHandleMouseLeave);
+    this.wrapper.removeEventListener("click", this.boundHandleClick);
 
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -425,8 +438,8 @@ class ImageWaveEffect {
     const { width, height } = entry.contentRect;
     if (width === 0 || height === 0) return;
 
-    this.targetWidth = width;
-    this.targetHeight = height;
+    this.canvasWidth = width;
+    this.canvasHeight = height;
 
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
@@ -492,6 +505,29 @@ class ImageWaveEffect {
     gsap.to(this.plane.position, { x: 0, y: 0, duration });
     gsap.to(this.plane.scale, { x: 1, y: 1, duration });
     gsap.to(this.plane.material.uniforms.hover, { value: 0.0, duration });
+  }
+
+  handleClick() {
+    let link;
+
+    // Check for data-link attribute on container (gallery items)
+    if (this.container?.dataset?.link) {
+      link = this.container.dataset.link;
+    } else {
+      // Find the link in the parent entry element
+      const entry = this.container?.closest(".entry");
+      if (entry) {
+        link = entry.querySelector(".link a")?.href || entry.querySelector(".name a")?.href;
+      }
+    }
+
+    if (link) {
+      // Open in background tab
+      const newWindow = window.open(link, "_blank", "noopener,noreferrer");
+      if (newWindow) {
+        window.focus();
+      }
+    }
   }
 
   animate() {

@@ -294,7 +294,7 @@ a {
 
 .pic img {
     justify-self: right;
-    max-width: 650px;
+    max-width: 600px;
     box-shadow: var(--shad);
     border-radius: 5px;
     will-change: transform;
@@ -357,6 +357,24 @@ a {
     letter-spacing: 0.01em;
     will-change: transform;
     transform: translateY(0) rotateX(0) rotateY(0);
+}
+
+/* Image Gallery */
+.image-gallery {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin: 50px 0;
+    padding: 0 11vw;
+}
+
+.gallery-item {
+    justify-self: center;
+}
+
+.gallery-item img {
+    max-width: 100%;
+    width: 100%;
 }
 
 /* Contact Section */
