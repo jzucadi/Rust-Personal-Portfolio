@@ -344,10 +344,10 @@ class ImageWaveEffect {
       Math.abs(this.options.cameraDistance);
     const visibleWidth = visibleHeight * this.camera.aspect;
 
-    // Use the full visible width so the plane fills the canvas
+    // Fill the entire visible area - plane matches camera frustum exactly
     const planeWidth = visibleWidth;
-    const planeAspectRatio = this.targetHeight / this.targetWidth;
-    const planeHeight = planeWidth * planeAspectRatio;
+    const planeHeight = visibleHeight;
+    const planeAspectRatio = planeHeight / planeWidth;
 
     return { planeWidth, planeHeight, planeAspectRatio };
   }
