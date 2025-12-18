@@ -1,7 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct JobEntry {
+    #[allow(dead_code)]
     pub key: u32,
     pub name: String,
     pub details: String,
@@ -10,7 +11,7 @@ pub struct JobEntry {
     pub link: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct JobData {
     pub entries: Vec<JobEntry>,
 }

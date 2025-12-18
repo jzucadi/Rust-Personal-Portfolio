@@ -22,7 +22,12 @@ struct IndexTemplate<'a> {
 }
 
 struct AppState {
-    jobs: Vec<JobEntry>,
+    jobs: Box<[JobEntry]>,
+}
+
+#[derive(serde::Serialize)]
+struct HealthResponse {
+    status: &'static str,
 }
 
 #[tokio::main]
@@ -35,7 +40,7 @@ async fn main() -> Result<()> {
     let job_data = load_jobs().context("Failed to load job data from db.json")?;
 
     let state = Arc::new(AppState {
-        jobs: job_data.entries,
+        jobs: job_data.entries.into_boxed_slice(),
     });
 
     let [h1, h2, h3, h4] = security_headers();
@@ -106,9 +111,7 @@ async fn index_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 }
 
 async fn health_handler() -> impl IntoResponse {
-    axum::Json(serde_json::json!({
-        "status": "healthy"
-    }))
+    axum::Json(HealthResponse { status: "healthy" })
 }
 
 fn load_jobs() -> Result<JobData> {
@@ -127,15 +130,20 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    fn sample_job() -> JobEntry {
-        JobEntry {
+    fn sample_jobs() -> Box<[JobEntry]> {
+        vec![JobEntry {
             key: 1,
             name: "Test Company".to_string(),
             details: "Test details".to_string(),
             tools: "Rust, Axum".to_string(),
             screen: "/test.png".to_string(),
             link: "https://example.com".to_string(),
-        }
+        }]
+        .into_boxed_slice()
+    }
+
+    fn empty_jobs() -> Box<[JobEntry]> {
+        Vec::new().into_boxed_slice()
     }
 
     #[test]
@@ -204,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_template_renders() {
-        let jobs = vec![sample_job()];
+        let jobs = sample_jobs();
         let template = IndexTemplate {
             jobs: &jobs,
             year: 2024,
@@ -220,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_template_renders_empty_jobs() {
-        let jobs: Vec<JobEntry> = vec![];
+        let jobs = empty_jobs();
         let template = IndexTemplate {
             jobs: &jobs,
             year: 2024,
@@ -232,9 +240,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_index_handler_returns_200() {
-        let state = Arc::new(AppState {
-            jobs: vec![sample_job()],
-        });
+        let state = Arc::new(AppState { jobs: sample_jobs() });
 
         let app = Router::new()
             .route("/", get(index_handler))
@@ -250,9 +256,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_index_handler_returns_html() {
-        let state = Arc::new(AppState {
-            jobs: vec![sample_job()],
-        });
+        let state = Arc::new(AppState { jobs: sample_jobs() });
 
         let app = Router::new()
             .route("/", get(index_handler))
@@ -272,7 +276,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_index_handler_empty_jobs() {
-        let state = Arc::new(AppState { jobs: vec![] });
+        let state = Arc::new(AppState { jobs: empty_jobs() });
 
         let app = Router::new()
             .route("/", get(index_handler))
@@ -288,7 +292,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_404_for_unknown_route() {
-        let state = Arc::new(AppState { jobs: vec![] });
+        let state = Arc::new(AppState { jobs: empty_jobs() });
 
         let app = Router::new()
             .route("/", get(index_handler))
@@ -309,7 +313,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_endpoint_returns_200() {
-        let state = Arc::new(AppState { jobs: vec![] });
+        let state = Arc::new(AppState { jobs: empty_jobs() });
 
         let app = Router::new()
             .route("/health", get(health_handler))
@@ -325,7 +329,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_endpoint_returns_json() {
-        let state = Arc::new(AppState { jobs: vec![] });
+        let state = Arc::new(AppState { jobs: empty_jobs() });
 
         let app = Router::new()
             .route("/health", get(health_handler))
@@ -344,7 +348,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_headers_present() {
-        let state = Arc::new(AppState { jobs: vec![] });
+        let state = Arc::new(AppState { jobs: empty_jobs() });
 
         let [h1, h2, h3, h4] = security_headers();
         let app = Router::new()
