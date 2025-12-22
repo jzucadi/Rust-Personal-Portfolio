@@ -97,7 +97,4 @@ Restart the server after making changes to see them reflected.
 - **Serde**: Serialization/deserialization
 - **Chrono**: Date and time library
 
-## License
-
-Personal portfolio project by James Zaccardo
 
