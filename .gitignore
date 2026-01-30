@@ -2,6 +2,7 @@
 /target/
 **/*.rs.bk
 *.pdb
+.claude
 
 # Cargo lock file (optional, uncomment if you want to track it)
 # Cargo.lock
