@@ -1,6 +1,4 @@
-{% extends "base.html" %}
-
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="container">
     <div>
         <h1 class="intro">
@@ -11,15 +9,12 @@
             <h2>
                 14+ years building robust, performant software at scale.
                 <br /><br />
-                I architect microservices that handle millions of requests, deploy
-                with confidence through battle-tested CI/CD pipelines, and integrate
-                cutting-edge LLM capabilities into production systems.
-                <br /><br />
-                I know how to catch problems before they happen. Check out some of my
-                <span class="scroll-link underline" onclick="window.scrollTo({top: document.getElementById('mywork').offsetTop, behavior: 'smooth'})">past work.</span>
-                <br /><br />
-                Built with: C++, React, TypeScript, Rust, Go, C#, Ruby on Rails, Java
-                Spring Boot.
+                See some of my
+                <span
+                    class="scroll-link underline"
+                    onclick="window.scrollTo({top: document.getElementById('mywork').offsetTop, behavior: 'smooth'})"
+                    >past work.</span
+                >
             </h2>
         </div>
     </div>
@@ -29,16 +24,7 @@
     <div class="mobile">
         <h1>Recent Work</h1>
     </div>
-    {% for job in jobs %}
-        {% include "partials/job.html" %}
-    {% endfor %}
+    {% for job in jobs %} {% include "partials/job.html" %} {% endfor %}
 
-    <div class="image-gallery">
-        {% for job in jobs %}
-        <div class="gallery-item pic" data-link="{{ job.link }}">
-            <img src="/static/images{{ job.screen }}" alt="{{ job.name }}" />
-        </div>
-        {% endfor %}
-    </div>
 </div>
 {% endblock %}

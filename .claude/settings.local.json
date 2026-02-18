@@ -33,7 +33,8 @@
       "mcp__rust-mcp__cargo-clippy",
       "mcp__rust-mcp__cargo-fmt",
       "Bash(find:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
