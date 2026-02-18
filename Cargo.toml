@@ -2,7 +2,7 @@
 name = "rust-persona"
 version = "1.0.0"
 edition = "2021"
-authors = ["Jim Zaccardo"]
+authors = ["Chuck Berry"]
 
 [dependencies]
 anyhow = "1.0"

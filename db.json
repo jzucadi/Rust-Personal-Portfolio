@@ -2,35 +2,35 @@
   "entries": [
     {
       "key": 1,
-      "name": "US Department of Veterans Affairs",
-      "details": "Managed Kubernetes and Service Mesh (ISTIO) in Microservices architecture. Orchestrated microservices architecture with Kubernetes and Istio. Developed and consumed APIs with Go and Postgres. Implemented CI/CD pipelines using Jenkins and Docker. Implemented monitoring and alerting using Prometheus and Grafana.",
-      "tools": "AI, LLM, ML, Microservices, AWS, Kubernetes, React, Typescript, Next.js, D3.js, Go, Postgres, Agile/Scrum, HTML, SASS",
-      "screen": "/va-gov.png",
-      "link": "https://www.va.gov/"
+      "name": "Project 1",
+      "details": "Craft beer meditation thundercats, vinyl freegan cold-pressed tousled irony hella. Banjo tumblr you probably haven't heard of them, dreamcatcher vexillologist etsy semiotics snackwave raw denim pork belly. Pour-over chillwave artisan plaid, asymmetrical leggings cloud bread sustainable XOXO.",
+      "tools": "Rust, Swift, Postgres, AWS, Microservices",
+      "screen": "/beach-1.webp",
+      "link": "#"
     },
     {
       "key": 2,
-      "name": "Newfront Insurance",
-      "details": "Developed new company website and mobile app. This included revamping the user flow across the product, creating a new design system, and expanding API endpoints. ",
-      "tools": "React, Typescript, Next.js, AWS, D3.js, Go, Postgres, Agile/Scrum, HTML, SASS",
-      "screen": "/nffff.svg",
-      "link": "https://www.newfront.com/"
+      "name": "Project 2",
+      "details": "Listicle pabst humblebrag, tattooed stumptown viral hammock selfies jianbing flexitarian. Taxidermy synth aesthetic shoreditch, keytar wayfarers chambray cronut scenester. Vaporware chartreuse chia blue bottle venmo, migas kickstarter distillery.",
+      "tools": "Rust, Swift, Postgres, AWS, Microservices",
+      "screen": "/beach-2.webp",
+      "link": "#"
     },
     {
       "key": 3,
-      "name": "Avalara",
-      "details": "Developed next generation tax management software. Led team of five from start to finish including design, scoping, diagramming, development, testing, implementation, and maintenance in a Agile/Scrum environment. ",
-      "tools": "React, Typescript, Python, Node.js, Postgres, AWS, Jira, Git, HTML, SASS",
-      "screen": "/av.svg",
-      "link": "https://www.avalara.com/"
+      "name": "Project 3",
+      "details": "Biodiesel cornhole enamel pin, helvetica post-ironic four dollar toast chicharrones intelligentsia normcore tilde. Neutra fam hell of banh mi messenger bag, direct trade salvia tacos. Kinfolk bushwick praxis occupy gastropub fixie bicycle rights.",
+      "tools": "Rust, Swift, Postgres, AWS, Microservices",
+      "screen": "/beach-3.webp",
+      "link": "#"
     },
     {
       "key": 4,
-      "name": "Georgetown University",
-      "details": "Developed new graduate school website with a custom CMS for employees. Worked with UX and Design teams to translate feature specifications into a reusable code/template library. Refactored legacy codebase into modern MVC architecture application.",
-      "tools": "C#, Javascript, .Net, REST-API, MySQL, Jira, Git, HTML, SASS",
-      "screen": "/gt.svg",
-      "link": "https://scs.georgetown.edu/"
+      "name": "Project 4",
+      "details": "Gluten-free wayfarers portland succulents health goth tumeric. Vegan pug authentic, brunch mumblecore echo park quinoa slow-carb skateboard tonx. Schlitz crucifix cred locavore literally man braid marxism copper mug kombucha.",
+      "tools": "Rust, Swift, Postgres, AWS, Microservices",
+      "screen": "/beach-4.webp",
+      "link": "#"
     }
   ]
 }

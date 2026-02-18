@@ -31,7 +31,9 @@
       "mcp__rust-mcp__cargo-check",
       "mcp__rust-mcp__cargo-test",
       "mcp__rust-mcp__cargo-clippy",
-      "mcp__rust-mcp__cargo-fmt"
+      "mcp__rust-mcp__cargo-fmt",
+      "Bash(find:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
