@@ -359,14 +359,21 @@ mod tests {
             .await
             .expect("Could not read db.json");
         let result = parse_job_data(&data);
-        assert!(result.is_ok(), "db.json failed to parse: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "db.json failed to parse: {:?}",
+            result.err()
+        );
 
         let job_data = result.unwrap();
         assert!(!job_data.entries.is_empty(), "db.json should have entries");
 
         for entry in &job_data.entries {
             assert!(!entry.name.is_empty(), "Entry name should not be empty");
-            assert!(!entry.details.is_empty(), "Entry details should not be empty");
+            assert!(
+                !entry.details.is_empty(),
+                "Entry details should not be empty"
+            );
             assert!(!entry.tools.is_empty(), "Entry tools should not be empty");
             assert!(!entry.screen.is_empty(), "Entry screen should not be empty");
             assert!(!entry.link.is_empty(), "Entry link should not be empty");
@@ -382,8 +389,14 @@ mod tests {
         };
 
         let html = template.render().expect("Template failed to render");
-        assert!(html.contains("Chuck Berry"), "Template should contain 'Chuck Berry'");
-        assert!(html.contains("software engineer"), "Template should contain 'software engineer'");
+        assert!(
+            html.contains("Chuck Berry"),
+            "Template should contain 'Chuck Berry'"
+        );
+        assert!(
+            html.contains("software engineer"),
+            "Template should contain 'software engineer'"
+        );
     }
 
     #[tokio::test]
